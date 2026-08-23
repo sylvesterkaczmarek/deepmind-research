@@ -24,8 +24,35 @@ TORSION_MODEL="alphafold_casp13/941521"  # Path to the directory with the torsio
 TARGET="T1019s2"  # The name of the target.
 TARGET_PATH="alphafold_casp13/${TARGET}"  # Path to the directory with the target input data.
 
+# TensorFlow 1.14 provides Python 3 wheels for Python 3.6 and 3.7 only. Prefer
+# those interpreters explicitly instead of letting a newer system `python3`
+# create a virtual environment in which the pinned TensorFlow cannot install.
+select_python() {
+  if [[ -n "${PYTHON_BIN:-}" ]]; then
+    candidates=("${PYTHON_BIN}")
+  else
+    candidates=(python3.7 python3.6 python3)
+  fi
+
+  for candidate in "${candidates[@]}"; do
+    if command -v "${candidate}" >/dev/null 2>&1 && \
+        "${candidate}" -c 'import sys; raise SystemExit(0 if (3, 6) <= sys.version_info[:2] <= (3, 7) else 1)' >/dev/null 2>&1; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+PYTHON_BIN="$(select_python)" || {
+  echo "AlphaFold CASP13 requires Python 3.6 or 3.7 because its pinned TensorFlow 1.14 dependency has no Python 3.8+ wheel." >&2
+  echo "Install a supported interpreter or set PYTHON_BIN to its executable path." >&2
+  exit 1
+}
+
 # Set up the virtual environment and install dependencies.
-python3 -m venv alphafold_venv
+echo "Using $("${PYTHON_BIN}" --version 2>&1) from $(command -v "${PYTHON_BIN}")"
+"${PYTHON_BIN}" -m venv alphafold_venv
 source alphafold_venv/bin/activate
 pip install wheel
 pip install -r alphafold_casp13/requirements.txt
