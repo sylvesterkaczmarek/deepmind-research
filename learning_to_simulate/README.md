@@ -36,7 +36,7 @@ For example, with Python 3.7 available as `python3.7`:
     python3.7 -m venv /tmp/learning_to_simulate_venv
     source /tmp/learning_to_simulate_venv/bin/activate
     pip install -r learning_to_simulate/requirements.txt
-    mkdir -p /tmp/rollous
+    mkdir -p /tmp/rollouts
 
 Download dataset (e.g. WaterRamps):
 
