@@ -1,0 +1,49 @@
+name: Validate MeshGraphNets PRs 746 and 747
+
+on:
+  push:
+    branches:
+      - validation/meshgraphnets-prs-746-747
+
+permissions:
+  contents: read
+
+jobs:
+  focused-regressions:
+    if: github.repository == 'sylvesterkaczmarek/deepmind-research'
+    runs-on: ubuntu-22.04
+    timeout-minutes: 15
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - pr: 746
+            head: 804c15ef92488c56c07616750610bc2c9bb340ed
+            test_module: meshgraphnets.dataset_test
+          - pr: 747
+            head: d37487bacb18fa7551d653cce53df86ebceab42c
+            test_module: meshgraphnets.cfd_eval_test
+    name: PR ${{ matrix.pr }} focused regressions
+    env:
+      TF_IMAGE: tensorflow/tensorflow@sha256:181ff142e73ed8efe350f49288c7b0f5681fde66534a76d8de4fc75d4e30d571
+      EXPECTED_SHA: ${{ matrix.head }}
+      TEST_MODULE: ${{ matrix.test_module }}
+    steps:
+      - name: Check out the exact PR head
+        uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262
+        with:
+          repository: sylvesterkaczmarek/deepmind-research
+          ref: ${{ matrix.head }}
+          persist-credentials: false
+          sparse-checkout: meshgraphnets
+      - name: Confirm the source revision
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SHA"
+      - name: Pull the official TensorFlow 1.15.5 CPU image
+        run: docker pull "$TF_IMAGE"
+      - name: Run the included regression module
+        run: |
+          docker run --rm --network none \
+            --env PYTHONDONTWRITEBYTECODE=1 \
+            --volume "$GITHUB_WORKSPACE:/work:ro" \
+            --workdir /work \
+            "$TF_IMAGE" python3 -m "$TEST_MODULE"
